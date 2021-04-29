@@ -9,7 +9,12 @@
 
 %include "src/hwregs.inc"
 
-prog_size equ prog_end - prog_start
+VIDTYPE_UNK	equ 0
+VIDTYPE_MDA	equ 1
+VIDTYPE_CGA	equ 2
+VIDTYPE_EGA_VGA	equ 3
+
+PROG_SIZE equ prog_end - prog_start
 driveno equ 7b00h
 
 start:
@@ -26,7 +31,7 @@ start:
 	call printstr
 
 	mov ah, 2			; read sectors call
-	mov al, (prog_size + 511) / 512	; num sectors
+	mov al, (PROG_SIZE + 511) / 512	; num sectors
 	mov cx, 2			; start from sector 2 cylinder 0
 	mov dx, [driveno]
 	xor dh, dh			; head 0
@@ -59,28 +64,52 @@ str_load_fail db "Failed to load program!",0
 	dw 0aa55h
 
 prog_start:
+	call detect_video
+
+	cmp word [mono], 0
+	jz .notmono
+	mov word [vmemseg], 0b000h
+.notmono:
+
+	; make sure we're in the correct mode and also reset scroll registers
+	; and all the rest of the video state by setting up mode 3 through
+	; the video BIOS, even though we're probably in mode 3 anyway
+	mov ax, 3
+	int 10h
+
 	cld
 	; clear the screen
-	mov ax, 0b800h
+	mov ax, [vmemseg]
 	mov es, ax
 	xor di, di
 	mov cx, 2000
 	xor ax, ax
 	rep stosw
 
-	; disable the blink attribute
-	;mov dx, CGA_MODE_PORT
-	;in al, dx
-	;and al, ~CGA_MODE_BLINK
-	;out dx, al
-
-	;mov dx, VGA_STAT1_PORT
-	;in al, dx
-	;mov dx, VGA_AC_PORT
-	;mov al, VGA_AC_MODE_REG
-	;out dx, al
-	;mov al, VGA_AC_MODE_LGE
-	;out dx, al
+	cmp word [vidtype], VIDTYPE_EGA_VGA
+	jnz .notvga
+	; EGA/VGA blink disable through the attribute controller
+	mov dx, VGA_STAT1_PORT
+	in al, dx
+	mov dx, VGA_AC_PORT
+	mov al, VGA_AC_MODE_REG
+	out dx, al
+	mov al, VGA_AC_MODE_LGE
+	out dx, al
+	jmp .noblink_done
+.notvga:
+	cmp word [vidtype], VIDTYPE_CGA
+	jnz .notcga
+	; CGA blink disable throught the mode register
+	mov dx, CGA_MODE_PORT
+	in al, dx
+	and al, ~CGA_MODE_BLINK
+	out dx, al
+	jmp .noblink_done
+.notcga:
+	; unknown display adapter, hack the high order bits off the bg colors
+	call game_drop_bgint
+.noblink_done:
 
 	call start_game
 
@@ -101,6 +130,62 @@ str_waitesc db "press esc to quit...",13,10,0
 	cli
 	hlt
 %endif
+
+detect_video:
+	; try the VGA detect call first
+	mov ax, 1a00h
+	int 10h
+	cmp al, 1ah
+	jnz .skip_vgainfo
+	cmp bl, 0ffh
+	jz .skip_vgainfo
+	cmp bl, 1
+	jnz .nomda
+	mov word [vidtype], VIDTYPE_MDA
+	mov word [mono], 1
+	ret
+.nomda:	cmp bl, 4
+	jae .nocga
+	mov word [vidtype], VIDTYPE_CGA
+	mov word [mono], 0
+	ret
+.nocga:	mov word [vidtype], VIDTYPE_EGA_VGA
+	and bx, 1
+	mov [mono], bx	; monochrome codes are odd
+	ret
+
+.skip_vgainfo:
+	; try get ega info
+	mov ah, 12h
+	mov bx, 0ff10h
+	int 10h
+	cmp bh, 0ffh
+	jz .skip_egainfo
+	mov word [vidtype], VIDTYPE_EGA_VGA
+	test bh, bh
+	jnz .ega_mono
+	mov word [mono], 0
+	ret
+.ega_mono:
+	mov word [mono], 1
+	ret
+
+.skip_egainfo:
+	; try int 11h (get equipment list)
+	int 11h
+	and ax, 30h
+	cmp ax, 30h
+	jz .mda
+	mov word [vidtype], VIDTYPE_CGA
+	mov word [mono], 0
+	ret
+.mda:	mov word [vidtype], VIDTYPE_MDA
+	mov word [mono], 1
+	ret
+
+vidtype dw 0
+mono	dw 0
+vmemseg	dw 0b800h
 
 %include "src/game.asm"
 

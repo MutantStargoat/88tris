@@ -1,28 +1,41 @@
 ; vi:set ts=8 sts=8 sw=8 ft=nasm:
-scr_rows equ 20
-scr_cols equ 20
-pf_xoffs equ 20
+SCR_ROWS equ 20
+SCR_COLS equ 20
+PF_XOFFS equ 20
 
-tile_black	equ 0
-tile_pf		equ 1
-tile_pfsep	equ 2
-tile_gameover	equ 3
-tile_ipiece	equ 4
-tile_opiece	equ 5
-tile_jpiece	equ 6
-tile_lpiece	equ 7
-tile_spiece	equ 8
-tile_tpiece	equ 9
-tile_zpiece	equ 10
-tile_frm_tl	equ 11
-tile_frm_tr	equ 12
-tile_frm_bl	equ 13
-tile_frm_br	equ 14
-tile_frm_ltee	equ 15
-tile_frm_rtee	equ 16
-tile_frm_hline	equ 17
-tile_frm_lvline	equ 18
-tile_frm_rvline equ 19
+TILE_BLACK	equ 0
+TILE_PF		equ 1
+TILE_PFSEP	equ 2
+TILE_GAMEOVER	equ 3
+TILE_IPIECE	equ 4
+TILE_OPIECE	equ 5
+TILE_JPIECE	equ 6
+TILE_LPIECE	equ 7
+TILE_SPIECE	equ 8
+TILE_TPIECE	equ 9
+TILE_ZPIECE	equ 10
+TILE_FRM_TL	equ 11
+TILE_FRM_TR	equ 12
+TILE_FRM_BL	equ 13
+TILE_FRM_BR	equ 14
+TILE_FRM_LTEE	equ 15
+TILE_FRM_RTEE	equ 16
+TILE_FRM_HLINE	equ 17
+TILE_FRM_LVLINE	equ 18
+TILE_FRM_RVLINE equ 19
+
+	; called when we can't detect the display adapter, to drop all the high
+	; bits off the background colors, since we can't disable blink
+game_drop_bgint:
+	mov bx, tiles
+	mov cx, (end_tiles - tiles) / 2
+.loop:	mov ax, [bx]
+	and ax, 07fffh
+	mov [bx], ax
+	add bx, 2
+	dec cx
+	jnz .loop
+	ret
 
 start_game:
 	; fill the screen buffer, and draw
@@ -30,19 +43,24 @@ start_game:
 	mov es, ax
 	mov di, scrbuf
 	mov si, bgdata
-	mov cx, scr_rows * scr_cols / 2
+	mov cx, SCR_ROWS * SCR_COLS / 2
 	rep movsw
 
-	call drawbg
-	ret
+	cmp word [mono], 0
+	jz .color
+	call drawbg_mono
+	jmp .done
+.color:	call drawbg
+.done:	ret
+
 
 drawbg:
 	mov ax, 0b800h
 	mov es, ax
-	mov di, pf_xoffs * 2
+	mov di, PF_XOFFS * 2
 	mov si, scrbuf
-	mov dx, scr_rows
-.yloop: mov cx, scr_cols
+	mov dx, SCR_ROWS
+.yloop: mov cx, SCR_COLS
 .xloop:	xor ax, ax
 	lodsb	; read tile number from screen buffer
 	mov bx, tiles
@@ -55,7 +73,7 @@ drawbg:
 	stosw
 	dec cx
 	jnz .xloop
-	add di, 160 - scr_cols * 4	; skip to the start of the next row
+	add di, 160 - SCR_COLS * 4	; skip to the start of the next row
 	dec dx
 	jnz .yloop
 
@@ -64,21 +82,20 @@ drawbg:
 
 	mov si, str_score
 	mov ax, 1
-	mov bx, pf_xoffs + 14 * 2
+	mov bx, PF_XOFFS + 14 * 2
 	call drawstr
 
 	mov si, str_level
 	mov ax, 6
-	mov bx, pf_xoffs + 14 * 2
+	mov bx, PF_XOFFS + 14 * 2
 	call drawstr
 
 	mov si, str_lines
 	mov ax, 9
-	mov bx, pf_xoffs + 14 * 2
+	mov bx, PF_XOFFS + 14 * 2
 	call drawstr
 
 	ret
-
 
 	; expects string in si, row in ax, column in bx, color attr in cx
 drawstr:
@@ -87,7 +104,7 @@ drawstr:
 	shl bx, 1
 	add ax, bx
 	mov di, ax
-	mov ax, 0b800h
+	mov ax, [vmemseg]
 	mov es, ax
 .loop:	lodsb
 	test al, al
@@ -98,12 +115,69 @@ drawstr:
 .done:	ret
 
 
+drawbg_mono:
+	mov ax, 0b000h
+	mov es, ax
+	mov di, PF_XOFFS
+	mov si, scrbuf
+	mov dx, SCR_ROWS
+.yloop: mov cx, SCR_COLS
+.xloop:	xor ax, ax
+	lodsb	; read tile number from screen buffer
+	mov bx, tiles
+	shl ax, 1
+	shl ax, 1
+	add bx, ax
+	mov ax, [bx]
+	stosb
+	mov ax, [bx + 2]
+	stosb
+	dec cx
+	jnz .xloop
+	add di, 80 - SCR_COLS * 2	; skip to the start of the next row
+	dec dx
+	jnz .yloop
+
+	; draw UI strings
+	mov si, str_score
+	mov ax, 1
+	mov bx, PF_XOFFS + 14 * 2
+	call drawstr_mono
+
+	mov si, str_level
+	mov ax, 6
+	mov bx, PF_XOFFS + 14 * 2
+	call drawstr_mono
+
+	mov si, str_lines
+	mov ax, 9
+	mov bx, PF_XOFFS + 14 * 2
+	call drawstr_mono
+
+	ret
+
+	; expects string in si, row in ax, column in bx
+drawstr_mono:
+	mov dx, 80
+	mul dx
+	add ax, bx
+	mov di, ax
+	mov ax, 0b000h
+	mov es, ax
+.loop:	lodsb
+	test al, al
+	jz .done
+	stosb
+	jmp .loop
+.done:	ret
+
+
 str_score db "S C O R E",0
 str_level db "L E V E L",0
 str_lines db "L I N E S",0
 
 	; screen buffer with tile numbers for each screen position
-scrbuf	times (scr_rows * scr_cols) db 0
+scrbuf	times (SCR_ROWS * SCR_COLS) db 0
 
 	; numbers correspond to tile_* equates at the top
 bgdata	db 0,2,1,1,1,1,1,1,1,1,1,1,2,11,17,17,17,17,17,12,
@@ -149,3 +223,4 @@ tiles	dw 00020h, 00020h		; black tile
 	dw 00fc4h, 00fc4h		; horizontal line
 	dw 00fb3h, 00f20h		; left vertical line
 	dw 00f20h, 00fb3h		; right vertical line
+end_tiles:
