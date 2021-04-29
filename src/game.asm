@@ -29,9 +29,7 @@ TILE_FRM_RVLINE equ 19
 game_drop_bgint:
 	mov bx, tiles
 	mov cx, (end_tiles - tiles) / 2
-.loop:	mov ax, [bx]
-	and ax, 07fffh
-	mov [bx], ax
+.loop:	and word [bx], 07fffh
 	add bx, 2
 	dec cx
 	jnz .loop
@@ -46,16 +44,12 @@ start_game:
 	mov cx, SCR_ROWS * SCR_COLS / 2
 	rep movsw
 
-	cmp word [mono], 0
-	jz .color
-	call drawbg_mono
-	jmp .done
-.color:	call drawbg
-.done:	ret
+	call drawbg
+	ret
 
 
 drawbg:
-	mov ax, 0b800h
+	mov ax, [vmemseg]
 	mov es, ax
 	mov di, PF_XOFFS * 2
 	mov si, scrbuf
@@ -78,7 +72,7 @@ drawbg:
 	jnz .yloop
 
 	; draw UI strings
-	mov cx, 0f0h
+	mov cl, [tiles + 41]
 
 	mov si, str_score
 	mov ax, 1
@@ -111,63 +105,6 @@ drawstr:
 	jz .done
 	mov ah, cl
 	stosw
-	jmp .loop
-.done:	ret
-
-
-drawbg_mono:
-	mov ax, 0b000h
-	mov es, ax
-	mov di, PF_XOFFS
-	mov si, scrbuf
-	mov dx, SCR_ROWS
-.yloop: mov cx, SCR_COLS
-.xloop:	xor ax, ax
-	lodsb	; read tile number from screen buffer
-	mov bx, tiles
-	shl ax, 1
-	shl ax, 1
-	add bx, ax
-	mov ax, [bx]
-	stosb
-	mov ax, [bx + 2]
-	stosb
-	dec cx
-	jnz .xloop
-	add di, 80 - SCR_COLS * 2	; skip to the start of the next row
-	dec dx
-	jnz .yloop
-
-	; draw UI strings
-	mov si, str_score
-	mov ax, 1
-	mov bx, PF_XOFFS + 14 * 2
-	call drawstr_mono
-
-	mov si, str_level
-	mov ax, 6
-	mov bx, PF_XOFFS + 14 * 2
-	call drawstr_mono
-
-	mov si, str_lines
-	mov ax, 9
-	mov bx, PF_XOFFS + 14 * 2
-	call drawstr_mono
-
-	ret
-
-	; expects string in si, row in ax, column in bx
-drawstr_mono:
-	mov dx, 80
-	mul dx
-	add ax, bx
-	mov di, ax
-	mov ax, 0b000h
-	mov es, ax
-.loop:	lodsb
-	test al, al
-	jz .done
-	stosb
 	jmp .loop
 .done:	ret
 

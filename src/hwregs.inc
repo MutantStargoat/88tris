@@ -1,5 +1,16 @@
 ; vi:set ts=8 sts=8 sw=8 ft=nasm:
 
+; ---- MDA registers ----
+MDA_CRTC_ADDR_PORT	equ 3b4h
+MDA_CRTC_DATA_PORT	equ 3b5h
+MDA_MODE_PORT		equ 3b8h
+MDA_STAT_PORT		equ 3bah
+
+MDA_MODE_80COL		equ 01h
+MDA_MODE_MONO		equ 02h
+MDA_MODE_EN		equ 08h
+MDA_MODE_BLINK		equ 20h
+
 ; ---- CGA registers ----
 CGA_MODE_PORT		equ 3d8h
 CGA_COLOR_PORT		equ 3d9h

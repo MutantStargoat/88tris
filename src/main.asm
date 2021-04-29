@@ -100,13 +100,20 @@ prog_start:
 .notvga:
 	cmp word [vidtype], VIDTYPE_CGA
 	jnz .notcga
-	; CGA blink disable throught the mode register
+	; CGA blink disable through the mode register
 	mov dx, CGA_MODE_PORT
-	in al, dx
-	and al, ~CGA_MODE_BLINK
+	mov al, CGA_MODE_80COL | CGA_MODE_EN
 	out dx, al
 	jmp .noblink_done
 .notcga:
+	cmp word [vidtype], VIDTYPE_MDA
+	jnz .unknown
+	; MDA blink disable through the mode register
+	mov dx, MDA_MODE_PORT
+	mov al, MDA_MODE_80COL | MDA_MODE_MONO
+	out dx, al
+	jmp .noblink_done
+.unknown:
 	; unknown display adapter, hack the high order bits off the bg colors
 	call game_drop_bgint
 .noblink_done:
