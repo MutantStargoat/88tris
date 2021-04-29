@@ -62,9 +62,13 @@ prog_start:
 	mov ax, 043fh
 	rep stosw
 
+	call start_game
+
 	cli
 	hlt
 
 str_foo db "Foobar!",0
+
+%include "game.asm"
 
 prog_end:
