@@ -1,4 +1,19 @@
-; vi:set ts=8 sts=8 sw=8 ft=nasm:
+; 88tris - bootable tetris for the IBM PC
+; Copyright (C) 2021  John Tsiombikas <nuclear@member.fsf.org>
+; 
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+; 
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+; 
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 	cpu 8086
 %ifdef DOS
 	org 100h
@@ -39,11 +54,22 @@ start:
 	int 13h
 	jnc prog_start
 
+	call floppy_off
 	mov ax, str_load_fail
 	call printstr
 
 	cli
 	hlt
+
+floppy_off:
+	test word [driveno], 80h
+	jnz .done	; skip if high bit is set (i.e. it's not a floppy)
+	mov dx, 3f2h
+	in al, dx
+	and al, 0fh
+	out dx, al
+.done:	ret
+
 
 printstr:
 	mov si, ax
@@ -64,12 +90,8 @@ str_load_fail db "Failed to load program!",0
 	dw 0aa55h
 
 prog_start:
+	call floppy_off
 	call detect_video
-
-	cmp word [mono], 0
-	jz .notmono
-	mov word [vmemseg], 0b000h
-.notmono:
 
 	; make sure we're in the correct mode and also reset scroll registers
 	; and all the rest of the video state by setting up mode 3 through
@@ -78,122 +100,30 @@ prog_start:
 	int 10h
 
 	cld
-	; clear the screen
-	mov ax, [vmemseg]
-	mov es, ax
-	xor di, di
-	mov cx, 2000
-	xor ax, ax
-	rep stosw
-
-	cmp word [vidtype], VIDTYPE_EGA_VGA
-	jnz .notvga
-	; EGA/VGA blink disable through the attribute controller
-	mov dx, VGA_STAT1_PORT
-	in al, dx
-	mov dx, VGA_AC_PORT
-	mov al, VGA_AC_MODE_REG
-	out dx, al
-	mov al, VGA_AC_MODE_LGE
-	out dx, al
-	jmp .noblink_done
-.notvga:
-	cmp word [vidtype], VIDTYPE_CGA
-	jnz .notcga
-	; CGA blink disable through the mode register
-	mov dx, CGA_MODE_PORT
-	mov al, CGA_MODE_80COL | CGA_MODE_EN
-	out dx, al
-	jmp .noblink_done
-.notcga:
-	cmp word [vidtype], VIDTYPE_MDA
-	jnz .unknown
-	; MDA blink disable through the mode register
-	mov dx, MDA_MODE_PORT
-	mov al, MDA_MODE_80COL | MDA_MODE_MONO
-	out dx, al
-	jmp .noblink_done
-.unknown:
-	; unknown display adapter, hack the high order bits off the bg colors
-	call game_drop_bgint
-.noblink_done:
-
+	call disable_blink
 	call start_game
 
 %ifdef DOS
 	mov ax, str_waitesc
 	call printstr
 .waitesc:
-	in al, 60h
-	dec al
+	mov ah, 8
+	int 21h
+	cmp al, 27
 	jnz .waitesc
 
 	mov ax, 3
 	int 10h
 	int 20h
 
-str_waitesc db "press esc to quit...",13,10,0
+str_waitesc db "ESC to quit...",13,10,0
 %else
-	cli
-	hlt
+.hang:	hlt
+	jmp .hang
 %endif
 
-detect_video:
-	; try the VGA detect call first
-	mov ax, 1a00h
-	int 10h
-	cmp al, 1ah
-	jnz .skip_vgainfo
-	cmp bl, 0ffh
-	jz .skip_vgainfo
-	cmp bl, 1
-	jnz .nomda
-	mov word [vidtype], VIDTYPE_MDA
-	mov word [mono], 1
-	ret
-.nomda:	cmp bl, 4
-	jae .nocga
-	mov word [vidtype], VIDTYPE_CGA
-	mov word [mono], 0
-	ret
-.nocga:	mov word [vidtype], VIDTYPE_EGA_VGA
-	and bx, 1
-	mov [mono], bx	; monochrome codes are odd
-	ret
-
-.skip_vgainfo:
-	; try get ega info
-	mov ah, 12h
-	mov bx, 0ff10h
-	int 10h
-	cmp bh, 0ffh
-	jz .skip_egainfo
-	mov word [vidtype], VIDTYPE_EGA_VGA
-	test bh, bh
-	jnz .ega_mono
-	mov word [mono], 0
-	ret
-.ega_mono:
-	mov word [mono], 1
-	ret
-
-.skip_egainfo:
-	; try int 11h (get equipment list)
-	int 11h
-	and ax, 30h
-	cmp ax, 30h
-	jz .mda
-	mov word [vidtype], VIDTYPE_CGA
-	mov word [mono], 0
-	ret
-.mda:	mov word [vidtype], VIDTYPE_MDA
-	mov word [mono], 1
-	ret
-
-vidtype dw 0
-mono	dw 0
-vmemseg	dw 0b800h
-
+%include "src/disp.asm"
 %include "src/game.asm"
 
 prog_end:
+; vi:set ts=8 sts=8 sw=8 ft=nasm:

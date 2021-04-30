@@ -1,4 +1,21 @@
-; vi:set ts=8 sts=8 sw=8 ft=nasm:
+; 88tris - bootable tetris for the IBM PC
+; Copyright (C) 2021  John Tsiombikas <nuclear@member.fsf.org>
+; 
+; This program is free software: you can redistribute it and/or modify
+; it under the terms of the GNU General Public License as published by
+; the Free Software Foundation, either version 3 of the License, or
+; (at your option) any later version.
+; 
+; This program is distributed in the hope that it will be useful,
+; but WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+; GNU General Public License for more details.
+; 
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+%ifndef HWREGS_INC_
+%define HWREGS_INC_
 
 ; ---- MDA registers ----
 MDA_CRTC_ADDR_PORT	equ 3b4h
@@ -45,6 +62,7 @@ VGA_STAT0_PORT		equ 3c2h
 VGA_STAT1_PORT		equ 3dah	; same as CGA_STAT_PORT
 
 ; attribute controller registers
+VGA_AC_EN		equ 20h
 VGA_AC_MODE_REG		equ 10h
 
 ; sequence controller registers
@@ -64,3 +82,6 @@ VGA_AC_MODE_LGE		equ 04h
 VGA_AC_MODE_BLINK	equ 08h
 VGA_AC_MODE_PIXPAN	equ 20h
 VGA_AC_MODE_8BIT	equ 40h
+
+%endif ; HWREGS_INC_
+; vi:set ts=8 sts=8 sw=8 ft=nasm:
