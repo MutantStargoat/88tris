@@ -100,7 +100,13 @@ prog_start:
 	int 10h
 
 	cld
+
+	; hide cursor by placing it outside the screen
+	mov ax, 2000
+	call set_cursor_addr
+	; disable blink to allow 16 colors for the background attr
 	call disable_blink
+
 	call start_game
 
 %ifdef DOS

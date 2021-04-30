@@ -16,6 +16,21 @@
 
 %include "src/hwregs.inc"
 
+	; expects cursor location in ax
+set_cursor_addr:
+	mov dx, CGA_CRTC_PORT
+	cmp word [mono], 0
+	jz .notmono
+	mov dx, MDA_CRTC_PORT
+.notmono:
+	mov bx, ax
+	mov al, CRTC_CURH_REG
+	out dx, ax
+	mov ah, bl
+	mov al, CRTC_CURL_REG
+	out dx, ax
+	ret
+
 disable_blink:
 	cmp word [vidtype], VIDTYPE_EGA_VGA
 	jnz .notvga

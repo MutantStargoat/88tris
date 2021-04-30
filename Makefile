@@ -1,4 +1,4 @@
-src = src/main.asm src/game.asm
+src = src/main.asm src/game.asm src/disp.asm
 
 bin = 88tris
 img = 88tris.img
