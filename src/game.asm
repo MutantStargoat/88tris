@@ -59,7 +59,17 @@ start_game:
 	mov cx, SCR_ROWS * SCR_COLS / 2
 	rep movsw
 
+	; initialize the game state
+	mov di, game_state
+	mov cx, (game_state_end - game_state) / 2
+	xor ax, ax
+	rep stosw
+	mov word [cur_piece], -1
+	call rand_piece
+	mov word [next_piece], ax
+
 	call drawbg
+	call print_numbers
 	ret
 
 
@@ -71,7 +81,7 @@ drawbg:
 	mov dx, SCR_ROWS
 .yloop: mov cx, SCR_COLS
 .xloop:	xor ax, ax
-	lodsb	; read tile number from screen buffer
+	lodsb		; read tile number from screen buffer
 	mov bx, tiles
 	shl ax, 1
 	shl ax, 1
@@ -106,6 +116,72 @@ drawbg:
 
 	ret
 
+print_numbers:
+	sub sp, 16
+
+	mov ax, [score]
+	mov di, sp
+	mov cx, 10
+	call format_num
+
+	mov cx, [tiles + 41]
+	mov ax, 3
+	mov bx, PF_XOFFS + 14 * 2
+	mov si, sp
+	call drawstr
+
+	mov ax, [level]
+	mov di, sp
+	mov cx, 2
+	call format_num
+
+	mov cx, [tiles + 41]
+	mov ax, 7
+	mov bx, PF_XOFFS + 17 * 2
+	mov si, sp
+	call drawstr
+
+	mov ax, [lines]
+	mov di, sp
+	mov cx, 8
+	call format_num
+
+	mov cx, [tiles + 41]
+	mov ax, 10
+	mov bx, PF_XOFFS + 14 * 2
+	mov si, sp
+	call drawstr
+
+	add sp, 16
+	ret
+
+	; expects number in ax, buffer in di, field width in cx
+format_num:
+	mov bp, di
+	add di, cx
+	mov byte [di], 0	; null terminator
+	dec di
+	cmp di, bp
+	jz .end
+	mov cx, 10
+.convloop:
+	xor dx, dx
+	div cx
+	add dl, '0'
+	mov [di], dl
+	dec di
+	cmp di, bp
+	jb .end
+	test ax, ax
+	jnz .convloop
+	; fill leftover space with spaces
+.fill:	cmp di, bp
+	jb .end
+	mov byte [di], ' '
+	dec di
+	jmp .fill
+.end:	ret
+
 	; expects string in si, row in ax, column in bx, color attr in cx
 drawstr:
 	mov dx, 160
@@ -123,6 +199,32 @@ drawstr:
 	jmp .loop
 .done:	ret
 
+
+rand_piece:
+	; TODO gen random number
+	mov ax, [rand_state]
+	inc ax
+	mov bl, 7
+	div bl
+	mov al, ah
+	xor ah, ah
+	ret
+
+	align 2
+rand_state dw 0
+
+game_state:
+paused dw 0
+gameover dw 0
+num_complines dw 0
+score dw 0
+level dw 0
+lines dw 0
+tick_interval dw 0
+cur_piece dw -1
+prev_piece dw 0
+next_piece dw 0
+game_state_end:
 
 str_score db "S C O R E",0
 str_level db "L E V E L",0
