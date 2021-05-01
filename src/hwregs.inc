@@ -116,5 +116,50 @@ CRTC_VBLEND_REG		equ 16h
 CRTC_MODE_REG		equ 17h
 CRTC_LCMP_REG		equ 18h
 
+
+; ---- 8254 PIT ----
+OSC_FREQ		equ 1193182
+
+PIT_CNT0_PORT		equ 40h
+PIT_CNT1_PORT		equ 41h
+PIT_CNT2_PORT		equ 42h
+PIT_CTL_PORT		equ 43h
+
+PIT_CTL_BCD		equ 01h
+PIT_CTL_INTTERM		equ 00h
+PIT_CTL_ONESHOT		equ 02h
+PIT_CTL_RATE		equ 04h
+PIT_CTL_SQWAVE		equ 06h
+PIT_CTL_SWSTROBE	equ 08h
+PIT_CTL_HWSTROBE	equ 0ah
+PIT_CTL_LATCH		equ 00h
+PIT_CTL_LSB		equ 10h
+PIT_CTL_MSB		equ 20h
+PIT_CTL_BOTH		equ 30h
+PIT_CTL_SEL0		equ 00h
+PIT_CTL_SEL1		equ 40h
+PIT_CTL_SEL2		equ 80h
+PIT_CTL_RD		equ 0c0h
+
+
+; ---- 8259A PIC ----
+PIC_CMD_PORT	equ 20h
+PIC_DATA_PORT	equ 21h
+
+; PIC initialization command word 1 bits
+PIC_ICW1_ICW4_NEEDED	equ 01h
+PIC_ICW1_SINGLE		equ 02h
+PIC_ICW1_IVAL4		equ 04h
+PIC_ICW1_LEVEL		equ 08h
+PIC_ICW1_INIT		equ 10h
+; PIC initialization command word 4 bits
+PIC_ICW4_8086		equ 01h
+PIC_ICW4_AUTO_EOI	equ 02h
+PIC_ICW4_BUF_SLAVE	equ 08h
+PIC_ICW4_BUF_MASTER	equ 0ch
+PIC_ICW4_SPECIAL	equ 10h
+; PIC operation command word 2 bits
+PIC_OCW2_EOI		equ 20h
+
 %endif ; HWREGS_INC_
 ; vi:set ts=8 sts=8 sw=8 ft=nasm:

@@ -107,6 +107,8 @@ prog_start:
 	; disable blink to allow 16 colors for the background attr
 	call disable_blink
 
+	call init_timer
+
 	call start_game
 
 %ifdef DOS
@@ -129,6 +131,8 @@ str_waitesc db "ESC to quit...",13,10,0
 %endif
 
 %include "src/disp.asm"
+%include "src/timer.asm"
+%include "src/intr.asm"
 %include "src/game.asm"
 
 prog_end:
