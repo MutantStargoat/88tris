@@ -70,6 +70,15 @@ start_game:
 
 	call drawbg
 	call print_numbers
+
+.mainloop:
+	mov al, '_'
+	cmp byte [kb_keystate + 32], 0
+	jz .nopress
+	mov al, '#'
+.nopress:
+	mov [es:0], al
+	jmp .mainloop
 	ret
 
 

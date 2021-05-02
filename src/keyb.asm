@@ -16,6 +16,7 @@
 
 %include "src/hwregs.inc"
 %include "src/intr.inc"
+%include "src/keyb.inc"
 
 init_keyb:
 	cli
@@ -55,33 +56,84 @@ cleanup_keyb:
 
 keyb_intr:
 	push ax
+	push bx
 	in al, KB_DATA_PORT
 
+	; if it's the extended scancode prefix, set the ext flag and return
 	cmp al, 0e0h
 	jnz .notext
-	mov word [kb_scan_ext], 1
+	mov byte [kb_scan_ext], 1
 	jmp .eoi
 .notext:
+
+	; translate scancode
+	xor bh, bh
+	mov bl, al
+	and bx, 7fh
+	cmp byte [kb_scan_ext], 0
+	jnz .isext
+	mov ah, [bx + scantbl]
+	jmp .xlatdone
+.isext:	mov ah, [bx + scantbl_ext]
+	mov byte [kb_scan_ext], 0
+.xlatdone:
+	mov bl, ah
+
+	; update keypress state
 	xor ah, ah
 	test al, 80h
-	jz .notrelease
+	jnz .brk
+	not ah
+.brk:	mov [bx + kb_keystate], ah
+
+	; append to input buffer
+	mov ah, [kb_inp_wr]
+	mov bl, ah	; bx <- write position
 	inc ah
-.notrelease:
-	; TODO cont...
+	and ah, 0fh
+	cmp [kb_inp_rd], ah
+	jz .eoi		; buffer full, drop input
+	mov [bx + kb_inp], al
+	mov [kb_inp_wr], ah
 	
 .eoi:	send_eoi
+	pop bx
 	pop ax
 	iret
 
-	align 2
-kb_scan_ext dw 0
+kb_scan_ext db 0
+kb_inp_rd db 0
+kb_inp_wr db 0
 kb_inp times 16 db 0
-kb_inp_rd dw 0
-kb_inp_wr dw 0
+
+kb_keystate times KB_MAXKEYS db 0
+
+scantbl:
+	db 0,KB_ESC,'1','2','3','4','5','6','7','8','9','0','-','=','\b'	; 0 - e
+	db '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n'		; f - 1c
+	db KB_LCTRL,'a','s','d','f','g','h','j','k','l',';',"'",'`'		; 1d - 29
+	db KB_LSHIFT,'\\','z','x','c','v','b','n','m',',','.','/',KB_RSHIFT	; 2a - 36
+	db KB_NUM_MUL,KB_LALT,' ',KB_CAPSLK,KB_F1,KB_F2,KB_F3,KB_F4,KB_F5,KB_F6,KB_F7,KB_F8,KB_F9,KB_F10	;37 - 44
+	db KB_NUMLK,KB_SCRLK,KB_NUM7,KB_NUM8,KB_NUM9,KB_NUM_MINUS,KB_NUM4,KB_NUM5,KB_NUM6,KB_NUM_PLUS	; 45 - 4e
+	db KB_NUM1,KB_NUM2,KB_NUM3,KB_NUM0,KB_NUM_DOT,KB_SYSRQ,0,0,KB_F11,KB_F12; 4d - 58
+	db 0,0,0,0,0,0,0							; 59 - 5f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0					; 60 - 6f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0					; 70 - 7f
+
+scantbl_ext:
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0				; 0 - f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,'\r',KB_RCTRL,0,0			; 10 - 1f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0				; 20 - 2f
+	db 0,0,0,0,0,KB_NUM_MINUS,0,KB_SYSRQ,KB_RALT,0,0,0,0,0,0,0	; 30 - 3f
+	db 0,0,0,0,0,0,0,KB_HOME,KB_UP,KB_PGUP,0,KB_LEFT,0,KB_RIGHT,0,KB_END ; 40 - 4f
+	db KB_DOWN,KB_PGDN,KB_INS,KB_DEL,0,0,0,0,0,0,0,0,0,0,0,0	; 50 - 5f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0				; 60 - 6f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0				; 70 - 7f
+
+
 
 %ifdef DOS
 saved_keyb_intr times 2 dw 0
-%endif
-	
+%endif	
 
 ; vi:ts=8 sts=8 sw=8 ft=nasm:
