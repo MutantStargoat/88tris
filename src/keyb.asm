@@ -17,75 +17,71 @@
 %include "src/hwregs.inc"
 %include "src/intr.inc"
 
-init_timer:
+init_keyb:
 	cli
-	xor ax, ax
-	mov bx, 48d3h	; reload = 1193182hz / 64hz = 18643 (48d3h)
-	call set_timer_reload
-
 %ifdef DOS
-	; save previous interrupt handler to be restored at exit (DOS version)
+	; save previous interrupt handler
 	push es
-	mov ax, IRQ0_TIMER
+	mov ax, IRQ1_KEYB
 	call getvect
-	mov [saved_timer_intr], bx
-	mov [saved_timer_intr + 2], es
+	mov [saved_keyb_intr], bx
+	mov [saved_keyb_intr + 2], es
 	pop es
 %endif
 
 	mov ax, cs
 	mov ds, ax
-	mov dx, timer_intr
-	mov ax, IRQ0_TIMER
+	mov dx, keyb_intr
+	mov ax, IRQ1_KEYB
 	call setvect
 
-	unmask_irq 0
+	unmask_irq 1
 	sti
 	ret
 
 %ifdef DOS
-cleanup_timer:
+cleanup_keyb:
 	cli
 	; restore previous interrupt handler
 	push ds
-	mov dx, [saved_timer_intr]
-	mov ax, [saved_timer_intr + 2]
+	mov dx, [saved_keyb_intr]
+	mov ax, [saved_keyb_intr + 2]
 	mov ds, ax
 	call setvect
 	pop ds
-	; restore counter reload value
-	xor ax, ax
-	mov bx, 0ffffh
-	call set_timer_reload
 	sti
 	ret
-%endif	; DOS
+%endif
 
-	; expects counter number in ax, reload value in bx
-set_timer_reload:
-	; square wave mode, set both low and high reload bytes
-	mov dx, ax
-	add dx, PIT_CNT0_PORT
-	ror al, 1
-	ror al, 1
-	or al, PIT_CTL_BOTH | PIT_CTL_SQWAVE
-	out PIT_CTL_PORT, al
-	mov al, bl
-	out dx, al
-	mov al, bh
-	out dx, al
-	ret
+keyb_intr:
+	push ax
+	in al, KB_DATA_PORT
 
-	; TODO chain dos interrupt in DOS build
-timer_intr:
-	inc word [nticks]
-	send_eoi
+	cmp al, 0e0h
+	jnz .notext
+	mov word [kb_scan_ext], 1
+	jmp .eoi
+.notext:
+	xor ah, ah
+	test al, 80h
+	jz .notrelease
+	inc ah
+.notrelease:
+	; TODO cont...
+	
+.eoi:	send_eoi
+	pop ax
 	iret
 
 	align 2
-nticks dw 0
+kb_scan_ext dw 0
+kb_inp times 16 db 0
+kb_inp_rd dw 0
+kb_inp_wr dw 0
+
 %ifdef DOS
-saved_timer_intr times 2 dw 0
+saved_keyb_intr times 2 dw 0
 %endif
+	
 
 ; vi:ts=8 sts=8 sw=8 ft=nasm:

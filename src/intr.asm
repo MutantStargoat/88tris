@@ -18,12 +18,30 @@
 
 	; expects interrupt number in al, vector address in ds:dx
 setvect:
+	push es
 	xor bx, bx
+	mov es, bx
 	mov bl, al
 	shl bx, 1
 	shl bx, 1
-	mov [bx], dx
-	mov [bx + 2], ds
+	mov [es:bx], dx
+	mov [es:bx + 2], ds
+	pop es
+	ret
+
+	; expects interrupt number in al, returns in es:bx
+getvect:
+	push ds
+	xor bx, bx
+	mov ds, bx
+	mov bl, al
+	shl bx, 1
+	shl bx, 1
+	mov ax, [bx + 2]
+	mov es, ax
+	mov ax, [bx]
+	mov bx, ax
+	pop ds
 	ret
 
 ; vi:ts=8 sts=8 sw=8 ft=nasm:

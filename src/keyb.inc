@@ -13,38 +13,7 @@
 ; 
 ; You should have received a copy of the GNU General Public License
 ; along with this program.  If not, see <https://www.gnu.org/licenses/>.
-%ifndef INTR_INC_
-%define INTR_INC_
-
-%include "src/hwregs.inc"
-
-; default IRQ -> intr mapping is +8, no reason to change it
-IRQ0_TIMER	equ 8
-IRQ1_KEYB	equ 9
-
-%macro send_eoi 0
-	push ax
-	mov ax, PIC_OCW2_EOI
-	out byte PIC_CMD_PORT, al
-	pop ax
-%endmacro
-
-%macro mask_irq 1
-	push ax
-	in al, PIC_DATA_PORT
-	or al, (1 << %1)
-	out PIC_DATA_PORT, al
-	pop ax
-%endmacro
-
-%macro unmask_irq 1
-	push ax
-	in al, PIC_DATA_PORT
-	and al, ~(1 << %1)
-	out PIC_DATA_PORT, al
-	pop ax
-%endmacro
 
 
-%endif ; INTR_INC_
+
 ; vi:ts=8 sts=8 sw=8 ft=nasm:

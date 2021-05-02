@@ -161,5 +161,9 @@ PIC_ICW4_SPECIAL	equ 10h
 ; PIC operation command word 2 bits
 PIC_OCW2_EOI		equ 20h
 
+
+; ---- keyboard controller ----
+KB_DATA_PORT		equ 60h
+
 %endif ; HWREGS_INC_
 ; vi:set ts=8 sts=8 sw=8 ft=nasm:

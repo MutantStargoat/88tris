@@ -15,12 +15,36 @@
 ; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 	cpu 8086
+
 %ifdef DOS
 	org 100h
-	jmp prog_start
+	jmp prog_start	; 2 bytes
 %else
 	org 7c00h
+	jmp start	; 2 bytes
 %endif
+
+	nop		; 1 byte
+	; start of BPB at offset 3
+	db "BSPL 0.1"	; 03h: OEM ident, 8 bytes
+	dw 512		; 0bh: bytes per sector
+	db 1		; 0dh: sectors per cluster
+	dw 1		; 0eh: reserved sectors (including boot record)
+	db 2		; 10h: number of FATs
+	dw 224		; 11h: number of dir entries
+	dw 2880		; 13h: number of sectors in volume
+	db 0fh		; 15h: media descriptor type (f = 3.5" HD floppy)
+	dw 9		; 16h: number of sectors per FAT
+	dw 18		; 18h: number of sectors per track
+	dw 2		; 1ah: number of heads
+	dd 0		; 1ch: number of hidden sectors
+	dd 0		; 20h: high bits of sector count
+	db 0		; 24h: drive number
+	db 0		; 25h: winnt flags
+	db 28h		; 26h: signature(?)
+	dd 0		; 27h: volume serial number
+	db "88TRIS     "; 2bh: volume label, 11 bytes
+	db "FAT12   "	; 36h: filesystem id, 8 bytes
 
 %include "src/hwregs.inc"
 
@@ -107,6 +131,7 @@ prog_start:
 	; disable blink to allow 16 colors for the background attr
 	call disable_blink
 
+	call init_keyb
 	call init_timer
 
 	call start_game
@@ -122,15 +147,20 @@ prog_start:
 
 	mov ax, 3
 	int 10h
+
+	call cleanup_timer
+	call cleanup_keyb
+
 	int 20h
 
-str_waitesc db "ESC to quit...",13,10,0
+str_waitesc db "ESC to quit",0
 %else
 .hang:	hlt
 	jmp .hang
 %endif
 
 %include "src/disp.asm"
+%include "src/keyb.asm"
 %include "src/timer.asm"
 %include "src/intr.asm"
 %include "src/game.asm"
