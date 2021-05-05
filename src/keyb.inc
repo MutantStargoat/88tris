@@ -16,7 +16,12 @@
 %ifndef KEYB_INC_
 %define KEYB_INC_
 
+KB_BACKSP	equ 8
+KB_TAB		equ 9
+KB_ENTER	equ 10
+KB_NUM_ENTER	equ 13
 KB_ESC		equ 27
+KB_DEL		equ 127
 KB_LALT		equ 128
 KB_RALT		equ 129
 KB_LCTRL	equ 130
@@ -40,7 +45,6 @@ KB_NUMLK	equ 147
 KB_SCRLK	equ 148
 KB_SYSRQ	equ 149
 KB_INS		equ 150
-KB_DEL		equ 151
 KB_HOME		equ 152
 KB_END		equ 153
 KB_PGUP		equ 154
@@ -50,7 +54,6 @@ KB_RIGHT	equ 157
 KB_UP		equ 158
 KB_DOWN		equ 159
 KB_NUM_DOT	equ 160
-KB_NUM_ENTER	equ 161
 KB_NUM_PLUS	equ 162
 KB_NUM_MINUS	equ 163
 KB_NUM_MUL	equ 164

@@ -54,6 +54,30 @@ cleanup_keyb:
 	ret
 %endif
 
+kbhit:
+	xor al, al
+	cli
+	mov bl, [kb_inp_rd]
+	cmp [kb_inp_wr], bl
+	jz .done
+	inc al
+.done:	sti
+	ret
+
+getch:
+	cli
+	mov bl, [kb_inp_rd]
+	cmp [kb_inp_wr], bl
+	jz .done
+	xor bh, bh
+	mov al, [bx + kb_inp]
+	inc bx
+	and bx, 0fh
+	mov [kb_inp_rd], bl
+	mov [es:0], al
+.done:	sti
+	ret
+
 keyb_intr:
 	push ax
 	push bx
@@ -80,21 +104,22 @@ keyb_intr:
 	mov bl, ah
 
 	; update keypress state
-	xor ah, ah
 	test al, 80h
-	jnz .brk
-	not ah
-.brk:	mov [bx + kb_keystate], ah
+	jz .ispress
+	mov byte [bx + kb_keystate], 0
+	jmp .eoi	; we don't put release events in the queue, go to end
+.ispress:
+	mov byte [bx + kb_keystate], 1
 
 	; append to input buffer
-	mov ah, [kb_inp_wr]
-	mov bl, ah	; bx <- write position
-	inc ah
-	and ah, 0fh
-	cmp [kb_inp_rd], ah
+	mov al, [kb_inp_wr]
+	mov bl, al	; bx <- write position
+	inc al
+	and al, 0fh
+	cmp [kb_inp_rd], al
 	jz .eoi		; buffer full, drop input
-	mov [bx + kb_inp], al
-	mov [kb_inp_wr], ah
+	mov [bx + kb_inp], ah
+	mov [kb_inp_wr], al
 	
 .eoi:	send_eoi
 	pop bx
@@ -109,10 +134,10 @@ kb_inp times 16 db 0
 kb_keystate times KB_MAXKEYS db 0
 
 scantbl:
-	db 0,KB_ESC,'1','2','3','4','5','6','7','8','9','0','-','=','\b'	; 0 - e
-	db '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n'		; f - 1c
+	db 0,KB_ESC,'1','2','3','4','5','6','7','8','9','0','-','=',KB_BACKSP	; 0 - e
+	db KB_TAB,'q','w','e','r','t','y','u','i','o','p','[',']',KB_ENTER	; f - 1c
 	db KB_LCTRL,'a','s','d','f','g','h','j','k','l',';',"'",'`'		; 1d - 29
-	db KB_LSHIFT,'\\','z','x','c','v','b','n','m',',','.','/',KB_RSHIFT	; 2a - 36
+	db KB_LSHIFT,'\','z','x','c','v','b','n','m',',','.','/',KB_RSHIFT	; 2a - 36
 	db KB_NUM_MUL,KB_LALT,' ',KB_CAPSLK,KB_F1,KB_F2,KB_F3,KB_F4,KB_F5,KB_F6,KB_F7,KB_F8,KB_F9,KB_F10	;37 - 44
 	db KB_NUMLK,KB_SCRLK,KB_NUM7,KB_NUM8,KB_NUM9,KB_NUM_MINUS,KB_NUM4,KB_NUM5,KB_NUM6,KB_NUM_PLUS	; 45 - 4e
 	db KB_NUM1,KB_NUM2,KB_NUM3,KB_NUM0,KB_NUM_DOT,KB_SYSRQ,0,0,KB_F11,KB_F12; 4d - 58
@@ -122,7 +147,7 @@ scantbl:
 
 scantbl_ext:
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0				; 0 - f
-	db 0,0,0,0,0,0,0,0,0,0,0,0,'\r',KB_RCTRL,0,0			; 10 - 1f
+	db 0,0,0,0,0,0,0,0,0,0,0,0,KB_NUM_ENTER,KB_RCTRL,0,0		; 10 - 1f
 	db 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0				; 20 - 2f
 	db 0,0,0,0,0,KB_NUM_MINUS,0,KB_SYSRQ,KB_RALT,0,0,0,0,0,0,0	; 30 - 3f
 	db 0,0,0,0,0,0,0,KB_HOME,KB_UP,KB_PGUP,0,KB_LEFT,0,KB_RIGHT,0,KB_END ; 40 - 4f

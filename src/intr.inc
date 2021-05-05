@@ -23,10 +23,8 @@ IRQ0_TIMER	equ 8
 IRQ1_KEYB	equ 9
 
 %macro send_eoi 0
-	push ax
 	mov ax, PIC_OCW2_EOI
 	out byte PIC_CMD_PORT, al
-	pop ax
 %endmacro
 
 %macro mask_irq 1

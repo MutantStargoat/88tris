@@ -72,12 +72,18 @@ start_game:
 	call print_numbers
 
 .mainloop:
-	mov al, '_'
-	cmp byte [kb_keystate + 32], 0
-	jz .nopress
-	mov al, '#'
-.nopress:
+	cli
+	mov bl, [kb_inp_rd]
+	cmp [kb_inp_wr], bl
+	jz .inpdone
+	xor bh, bh
+	mov al, [bx + kb_inp]
+	inc bx
+	and bx, 0fh
+	mov [kb_inp_rd], bl
 	mov [es:0], al
+.inpdone:
+	sti
 	jmp .mainloop
 	ret
 
