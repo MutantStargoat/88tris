@@ -20,7 +20,6 @@
 
 init_keyb:
 	cli
-%ifdef DOS
 	; save previous interrupt handler
 	push es
 	mov ax, IRQ1_KEYB
@@ -28,7 +27,6 @@ init_keyb:
 	mov [saved_keyb_intr], bx
 	mov [saved_keyb_intr + 2], es
 	pop es
-%endif
 
 	mov ax, cs
 	mov ds, ax
@@ -40,7 +38,6 @@ init_keyb:
 	sti
 	ret
 
-%ifdef DOS
 cleanup_keyb:
 	cli
 	; restore previous interrupt handler
@@ -48,26 +45,29 @@ cleanup_keyb:
 	mov dx, [saved_keyb_intr]
 	mov ax, [saved_keyb_intr + 2]
 	mov ds, ax
+	mov ax, IRQ1_KEYB
 	call setvect
 	pop ds
 	sti
 	ret
-%endif
 
-kbhit:
-	xor al, al
+	; sets the carry flag if there's pending input
+keyb_pending:
 	cli
 	mov bl, [kb_inp_rd]
 	cmp [kb_inp_wr], bl
+	clc
 	jz .done
-	inc al
+	stc
 .done:	sti
 	ret
 
-getch:
+	; sets the carry flag if there was pending, removes it and puts it in al
+keyb_getnext:
 	cli
 	mov bl, [kb_inp_rd]
 	cmp [kb_inp_wr], bl
+	clc
 	jz .done
 	xor bh, bh
 	mov al, [bx + kb_inp]
@@ -75,6 +75,7 @@ getch:
 	and bx, 0fh
 	mov [kb_inp_rd], bl
 	mov [es:0], al
+	stc
 .done:	sti
 	ret
 
@@ -157,8 +158,7 @@ scantbl_ext:
 
 
 
-%ifdef DOS
+	align 2
 saved_keyb_intr times 2 dw 0
-%endif	
 
 ; vi:ts=8 sts=8 sw=8 ft=nasm:

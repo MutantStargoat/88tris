@@ -72,6 +72,20 @@ start_game:
 	call print_numbers
 
 .mainloop:
+	hlt
+.keyloop:
+	call keyb_getnext
+	jnc .mainloop
+	cmp al, KB_ESC
+	jz .endgame
+
+	mov [es:0], al
+	jmp .keyloop
+
+.endgame:
+	ret
+
+
 	cli
 	mov bl, [kb_inp_rd]
 	cmp [kb_inp_wr], bl
@@ -81,7 +95,6 @@ start_game:
 	inc bx
 	and bx, 0fh
 	mov [kb_inp_rd], bl
-	mov [es:0], al
 .inpdone:
 	sti
 	jmp .mainloop

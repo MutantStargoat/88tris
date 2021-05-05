@@ -140,9 +140,9 @@ prog_start:
 	mov ax, str_waitesc
 	call printstr
 .waitesc:
-	mov ah, 8
-	int 21h
-	cmp al, 27
+	call keyb_getnext
+	jnc .waitesc
+	cmp al, KB_ESC
 	jnz .waitesc
 
 	mov ax, 3
@@ -155,6 +155,8 @@ prog_start:
 
 str_waitesc db "ESC to quit",0
 %else
+	call cleanup_keyb
+
 .hang:	hlt
 	jmp .hang
 %endif
