@@ -86,21 +86,6 @@ start_game:
 	ret
 
 
-	cli
-	mov bl, [kb_inp_rd]
-	cmp [kb_inp_wr], bl
-	jz .inpdone
-	xor bh, bh
-	mov al, [bx + kb_inp]
-	inc bx
-	and bx, 0fh
-	mov [kb_inp_rd], bl
-.inpdone:
-	sti
-	jmp .mainloop
-	ret
-
-
 drawbg:
 	mov ax, [vmemseg]
 	mov es, ax
