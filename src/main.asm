@@ -117,6 +117,12 @@ prog_start:
 	call floppy_off
 	call detect_video
 
+	; save the current video mode
+	mov ah, 0xf
+	int 10h
+	and al, 7fh	; clear no-blanking bit if set
+	mov [prev_video_mode], al
+
 	; make sure we're in the correct mode and also reset scroll registers
 	; and all the rest of the video state by setting up mode 3 through
 	; the video BIOS, even though we're probably in mode 3 anyway
@@ -145,7 +151,8 @@ prog_start:
 	cmp al, KB_ESC
 	jnz .waitesc
 
-	mov ax, 3
+	xor ax, ax
+	mov al, [prev_video_mode]
 	int 10h
 
 	call cleanup_timer
@@ -160,6 +167,8 @@ str_waitesc db "ESC to quit",0
 .hang:	hlt
 	jmp .hang
 %endif
+
+prev_video_mode db 0
 
 %include "src/disp.asm"
 %include "src/keyb.asm"
