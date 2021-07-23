@@ -24,18 +24,28 @@
 	jmp start	; 2 bytes
 %endif
 
+%ifdef FLOPPY360
+BPB_DISK_SECTORS	equ 720
+BPB_TRACK_SECTORS	equ 9
+BPB_MEDIA_TYPE		equ 0fdh
+%else
+BPB_DISK_SECTORS	equ 2880
+BPB_TRACK_SECTORS	equ 18
+BPB_MEDIA_TYPE		equ 0fh
+%endif
+
 	nop		; 1 byte
 	; start of BPB at offset 3
-	db "BSPL 0.1"	; 03h: OEM ident, 8 bytes
+	db "88TRIS00"	; 03h: OEM ident, 8 bytes
 	dw 512		; 0bh: bytes per sector
 	db 1		; 0dh: sectors per cluster
 	dw 1		; 0eh: reserved sectors (including boot record)
 	db 2		; 10h: number of FATs
 	dw 224		; 11h: number of dir entries
-	dw 2880		; 13h: number of sectors in volume
-	db 0fh		; 15h: media descriptor type (f = 3.5" HD floppy)
+	dw BPB_DISK_SECTORS	; 13h: number of sectors in volume
+	db BPB_MEDIA_TYPE	; 15h: media descriptor type (f = 3.5" HD floppy)
 	dw 9		; 16h: number of sectors per FAT
-	dw 18		; 18h: number of sectors per track
+	dw BPB_TRACK_SECTORS	; 18h: number of sectors per track
 	dw 2		; 1ah: number of heads
 	dd 0		; 1ch: number of hidden sectors
 	dd 0		; 20h: high bits of sector count
