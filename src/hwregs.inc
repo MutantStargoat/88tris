@@ -164,6 +164,7 @@ PIC_OCW2_EOI		equ 20h
 
 ; ---- keyboard controller ----
 KB_DATA_PORT		equ 60h
+KB_CTRL_PORT		equ 61h
 
 %endif ; HWREGS_INC_
 ; vi:set ts=8 sts=8 sw=8 ft=nasm:

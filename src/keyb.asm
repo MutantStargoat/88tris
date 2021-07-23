@@ -84,6 +84,16 @@ keyb_intr:
 	push bx
 	in al, KB_DATA_PORT
 
+	mov bx, ax
+	in al, KB_CTRL_PORT
+	mov ah, al
+	or al, 80h
+	out KB_CTRL_PORT, al
+	mov al, ah
+	out KB_CTRL_PORT, al
+	mov ax, bx
+
+
 	; if it's the extended scancode prefix, set the ext flag and return
 	cmp al, 0e0h
 	jnz .notext
