@@ -51,6 +51,7 @@ cleanup_timer:
 	mov dx, [saved_timer_intr]
 	mov ax, [saved_timer_intr + 2]
 	mov ds, ax
+	mov ax, IRQ0_TIMER
 	call setvect
 	pop ds
 	; restore counter reload value
