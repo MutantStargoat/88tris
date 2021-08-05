@@ -72,19 +72,86 @@ start_game:
 	call print_numbers
 
 .mainloop:
-	hlt
-.keyloop:
 	call keyb_getnext
-	jnc .mainloop
+	jnc .endkeys
 	cmp al, KB_ESC
 	jz .endgame
+.endkeys:
 
-	mov [es:0], al
-	jmp .keyloop
+	mov ax, [nticks]
+	call update
+	jmp .mainloop
 
 .endgame:
 	ret
 
+	; game update, expects ticks in ax
+update:
+	cmp word [paused], 1
+	jnz .notpaused
+	mov [prev_tick], ax
+	ret
+.notpaused:
+	sub ax, [prev_tick]
+	mov [deltat], ax
+
+	cmp word [gameover], 1
+	jnz .notgameover
+	; TODO gameover
+	ret
+.notgameover:
+	
+	cmp word [num_complines], 0
+	jz .nocomplines
+	; lines were completed, we're in blinking mode
+	mov ax, [deltat]
+	cmp ah, 6
+	jbe .keepblinking
+	; done blinking
+	call erase_completed
+	mov word [num_complines], 0
+	ret
+.keepblinking:
+	mov cx, [num_complines]
+.blinkloop:
+	; TODO drawlines(complines[i], blink & i)
+	dec cx
+	jnz .blinkloop
+	ret
+.nocomplines:
+
+	; fall
+.fall:	mov ax, [deltat]
+	cmp ax, [tick_interval]
+	jbe .endfall
+	; check if we have a current piece
+	cmp word [cur_piece], 0
+	jz .nocurpiece
+	mov [just_spawned], 0
+	mov ax, [py]
+	inc ax
+	mov [next_py], ax
+	call collision		; sets carry if collision was detected
+	jnc .nocol
+	dec word [next_py]
+	call stick
+	ret
+.nocurpiece:
+	; no current piece, spawn one
+	call spawn		; sets carry on failure
+	jnc .nofail
+	mov word [gameover], 1
+	ret
+.nofail:
+	mov ax, [tick_interval]
+	sub [deltat], ax
+	mov ax, [nticks]
+	mov [prev_tick], ax
+	jmp .fall
+
+.endfall:
+	call update_cur_piece
+	ret
 
 drawbg:
 	mov ax, [vmemseg]
@@ -225,6 +292,8 @@ rand_piece:
 
 	align 2
 rand_state dw 0
+prev_tick dw 0
+deltat dw 0
 
 game_state:
 paused dw 0
