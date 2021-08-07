@@ -74,7 +74,6 @@ keyb_getnext:
 	inc bx
 	and bx, 0fh
 	mov [kb_inp_rd], bl
-	mov [es:0], al
 	stc
 .done:	sti
 	ret

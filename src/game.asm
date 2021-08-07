@@ -68,10 +68,15 @@ start_game:
 	call rand_piece
 	mov word [next_piece], ax
 
+	mov ax, [level_speed]
+	mov [tick_interval], ax
+
 	call drawbg
 	call print_numbers
 
+
 .mainloop:
+	hlt
 	call keyb_getnext
 	jnc .endkeys
 	cmp al, KB_ESC
@@ -84,6 +89,8 @@ start_game:
 
 .endgame:
 	ret
+
+
 
 	; game update, expects ticks in ax
 update:
@@ -127,22 +134,22 @@ update:
 	; check if we have a current piece
 	cmp word [cur_piece], 0
 	jz .nocurpiece
-	mov [just_spawned], 0
+	mov word [just_spawned], 0
 	mov ax, [py]
 	inc ax
 	mov [next_py], ax
 	call collision		; sets carry if collision was detected
-	jnc .nocol
+	jnc .endcheck
 	dec word [next_py]
 	call stick
 	ret
 .nocurpiece:
 	; no current piece, spawn one
 	call spawn		; sets carry on failure
-	jnc .nofail
+	jnc .endcheck
 	mov word [gameover], 1
 	ret
-.nofail:
+.endcheck:
 	mov ax, [tick_interval]
 	sub [deltat], ax
 	mov ax, [nticks]
@@ -151,6 +158,24 @@ update:
 
 .endfall:
 	call update_cur_piece
+	ret
+
+
+update_cur_piece:
+	ret
+
+spawn:
+	clc
+	ret
+
+collision:
+	clc
+	ret
+
+stick:
+	ret
+
+erase_completed:
 	ret
 
 drawbg:
@@ -296,17 +321,26 @@ prev_tick dw 0
 deltat dw 0
 
 game_state:
+px dw 0
+py dw 0
+next_px dw 0
+next_py dw 0
 paused dw 0
 gameover dw 0
 num_complines dw 0
 score dw 0
 level dw 0
 lines dw 0
+just_spawned dw 0
 tick_interval dw 0
 cur_piece dw -1
 prev_piece dw 0
 next_piece dw 0
 game_state_end:
+
+level_speed:
+	dw 887, 820, 753, 686, 619, 552, 469, 368, 285, 184
+	dw 167, 151, 134, 117, 107, 98, 88, 79, 69, 60, 50
 
 str_score db "S C O R E",0
 str_level db "L E V E L",0

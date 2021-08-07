@@ -174,6 +174,9 @@ str_waitesc db "ESC to quit",0
 %else
 	call cleanup_keyb
 
+	mov al, [prev_video_mode]
+	int 10h
+
 .hang:	hlt
 	jmp .hang
 %endif
