@@ -39,6 +39,9 @@ TILE_FRM_HLINE	equ 17
 TILE_FRM_LVLINE	equ 18
 TILE_FRM_RVLINE equ 19
 
+PREVIEW_POS equ 13
+ERASE_BIT equ 8000h
+
 	; called when we can't detect the display adapter, to drop all the high
 	; bits off the background colors, since we can't disable blink
 game_drop_bgint:
@@ -162,11 +165,83 @@ update:
 
 
 update_cur_piece:
-	ret
+	mov ax, [cur_piece]
+	cmp ax, 0
+	jb .end
+	mov bx, [px]
+	mov cx, [py]
+	mov dx, [prev_rot]
+	cmp bx, [next_px]
+	jnz .moved
+	cmp cx, [next_py]
+	jnz .moved
+	cmp dx, [cur_rot]
+	jnz .moved
+	ret	; x/y/rot unchanged, nothing to do
+.moved:	mov bh, cl	; bl: x, bh: y
+	; erase previous
+	or ax, ERASE_BIT
+	call draw_piece
+	; draw current
+	mov ax, [cur_piece]
+	mov bl, [next_px]
+	mov bh, [next_py]
+	mov dx, [cur_rot]
+	mov [prev_rot], dx	; update rotation
+	call draw_piece
+	; update position
+	mov si, next_px
+	mov di, px
+	movsw
+	movsw
+.end:	ret
+
 
 spawn:
-	clc
-	ret
+	; generate new random piece
+	call rand_piece
+	push ax
+
+	; erase the previous preview piece
+	mov ax, [next_piece]
+	or ax, ERASE_BIT
+	mov bl, PREVIEW_POS
+	mov bh, bl
+	xor dx, dx
+	push bx
+	call draw_piece
+	; and draw the new random piece in its place
+	pop bx
+	mov bp, sp
+	mov ax, [bp]	; don't pop it off the stack we'll need it
+	xor dx, dx
+	call draw_piece
+
+	; update cur_piece to whatever next_piece was, and put the
+	; new random piece in the next_piece variable
+	mov ax, [next_piece]
+	mov [cur_piece], ax
+	pop ax
+	mov [next_piece], ax
+
+	; cancel any rotation
+	xor ax, ax
+	mov [prev_rot], ax
+	mov [cur_rot], ax
+	; reset the position to the default at the top
+	mov ax, 40 - 2		; X pos: center screen -2
+	mov [px], ax
+	mov [next_px], ax
+	mov bx, [cur_piece]
+	mov ax, [bx + piece_spawn_py]
+	mov [next_py], ax
+	inc ax
+	mov [py], ax
+
+	call collision
+	jc .end
+	mov word [just_spawned], 1
+.end:	ret
 
 collision:
 	clc
@@ -176,6 +251,12 @@ stick:
 	ret
 
 erase_completed:
+	ret
+
+	; expects piece in ax (bit 15 means erase), position (X/Y) in bl/bh,
+	; rotation in dl
+draw_piece:
+	; TODO
 	ret
 
 drawbg:
@@ -325,6 +406,8 @@ px dw 0
 py dw 0
 next_px dw 0
 next_py dw 0
+prev_rot dw 0
+cur_rot dw 0
 paused dw 0
 gameover dw 0
 num_complines dw 0
@@ -341,6 +424,8 @@ game_state_end:
 level_speed:
 	dw 887, 820, 753, 686, 619, 552, 469, 368, 285, 184
 	dw 167, 151, 134, 117, 107, 98, 88, 79, 69, 60, 50
+
+piece_spawn_py dw -1, -1, -2, -1, -1, -1, -1
 
 str_score db "S C O R E",0
 str_level db "L E V E L",0
