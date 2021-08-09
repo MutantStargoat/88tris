@@ -256,7 +256,34 @@ erase_completed:
 	; expects piece in ax (bit 15 means erase), position (X/Y) in bl/bh,
 	; rotation in dl
 draw_piece:
-	; TODO
+	; check erase bit and point si to the correct tile
+	test ax, 8000h
+	jnz .erase
+	shl ax, 1	; each tile entry is 4 bytes, shilft left by 4
+	shl ax, 1
+	shl ax, 1
+	shl ax, 1
+	jmp .skiperase
+.erase:	mov ax, TILE_PF << 4
+.skiperase:
+	mov si, ax
+	add si, tiles + TILE_IPIECE*4	; I is the first piece
+
+	; point bp to the tile offset table for this piece/orientation
+	shl ax, 1	; each block is 32 bytes, shilft left by 5 (one more)
+	shl dx, 1	; each orientation is 8 bytes, shift left by 3
+	shl dx, 1
+	shl dx, 1
+	add ax, dx
+	mov bp, pieces
+	add bp, ax	; bp points to the correct row of tile offsets
+	; XXX Cont...
+
+
+	mov cx, 4	; 4 tiles per piece
+.tiledraw:
+	
+
 	ret
 
 drawbg:
@@ -421,6 +448,7 @@ prev_piece dw 0
 next_piece dw 0
 game_state_end:
 
+	align 2
 level_speed:
 	dw 887, 820, 753, 686, 619, 552, 469, 368, 285, 184
 	dw 167, 151, 134, 117, 107, 98, 88, 79, 69, 60, 50
@@ -479,4 +507,46 @@ tiles	dw 00020h, 00020h		; black tile
 	dw 00fb3h, 00f20h		; left vertical line
 	dw 00f20h, 00fb3h		; right vertical line
 end_tiles:
+
+	; for each block each row is for one of the four orientations, and each
+	; number has the coordinates of a filled block, low nibble: X, high: Y
+	; each block is 32 bytes, each row is 8 bytes
+pieces:
+	; L block
+	dw 0100h, 0200h, 0101h, 0102h
+	dw 0000h, 0001h, 0101h, 0201h
+	dw 0100h, 0101h, 0102h, 0002h
+	dw 0001h, 0101h, 0201h, 0202h
+	; J block
+	dw 0100h, 0101h, 0102h, 0202h
+	dw 0001h, 0101h, 0201h, 0200h
+	dw 0000h, 0100h, 0101h, 0102h
+	dw 0001h, 0002h, 0101h, 0201h
+	; I block
+	dw 0200h, 0201h, 0202h, 0203h
+	dw 0001h, 0101h, 0201h, 0301h
+	dw 0200h, 0201h, 0202h, 0203h
+	dw 0001h, 0101h, 0201h, 0301h
+	; O block
+	dw 0101h, 0102h, 0201h, 0202h
+	dw 0101h, 0102h, 0201h, 0202h
+	dw 0101h, 0102h, 0201h, 0202h
+	dw 0101h, 0102h, 0201h, 0202h
+	; Z block
+	dw 0100h, 0101h, 0201h, 0202h
+	dw 0100h, 0101h, 0001h, 0200h
+	dw 0100h, 0101h, 0201h, 0202h
+	dw 0100h, 0101h, 0001h, 0200h
+	; S block
+	dw 0101h, 0102h, 0200h, 0201h
+	dw 0000h, 0100h, 0101h, 0201h
+	dw 0101h, 0102h, 0200h, 0201h
+	dw 0000h, 0100h, 0101h, 0201h
+	; T block
+	dw 0100h, 0101h, 0102h, 0201h
+	dw 0001h, 0101h, 0201h, 0100h
+	dw 0100h, 0101h, 0102h, 0001h
+	dw 0001h, 0101h, 0201h, 0102h
+
+
 ; vi:set ts=8 sts=8 sw=8 ft=nasm:
